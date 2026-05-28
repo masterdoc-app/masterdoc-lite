@@ -1445,19 +1445,19 @@
         <div class="cal-frame" id="calFrame">
       <div class="cal-frame-head">Заявка на демо · ответим в течение рабочего дня</div>
       <div class="cal-body" style="padding:24px;background:var(--s1);border:1px solid var(--bd)">
-        <form class="contact-form" action="https://formspree.io/f/maqvkbob" method="POST" style="display:flex;flex-direction:column;gap:14px">
+        <form class="contact-form" action="https://formspree.io/f/maqkvnal" method="POST" style="display:flex;flex-direction:column;gap:14px">
           <input type="hidden" name="_subject" value="Masterdoc lite: заявка с лендинга">
           <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">
             Имя *
-            <input type="text" name="name" required style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
+            <input type="text" name="name" required autocomplete="name" style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
           </label>
           <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">
             Эл. почта *
-            <input type="email" name="email" required style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
+            <input type="email" name="email" required autocomplete="email" style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
           </label>
           <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">
-            Телефон
-            <input type="tel" name="phone" style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
+            Телефон *
+            <input type="tel" name="phone" required autocomplete="tel" style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
           </label>
           <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">
             Сообщение
