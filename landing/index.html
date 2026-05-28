@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Masterdoc — ИИ-копилот для поиска неисправностей в цеху</title>
+<meta name="description" content="Masterdoc ведёт операторов через поиск и устранение неисправностей на основе вашего оборудования и истории сбоев." />
+<meta property="og:title" content="Masterdoc — ИИ-копилот для поиска неисправностей в цеху" />
+<meta property="og:description" content="25 случаев простоя в месяц. Операторы сами не справляются ни с одним." />
+<meta property="og:type" content="website" />
+<meta name="theme-color" content="#FBF8F3" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    /* Paper / ink palette — warm editorial, matches machinemary + flosync.io */
+    --bg:#FBF8F3;         /* paper */
+    --s1:#F3EEE4;         /* paper-2 — cards / elevated surfaces */
+    --s2:#EAE3D4;         /* paper-3 — section breaks */
+    --s3:#E0D7C3;         /* deeper paper */
+    --bd:#DDD6C7;         /* rule */
+    --bd2:#C8BFA9;        /* rule-2 — stronger border */
+    --tx:#1A1814;         /* ink */
+    --tx2:#3A3530;        /* ink-2 */
+    --tx3:#6B665C;        /* ink-3 */
+    --or:#C2410C;         /* flare — burnt sienna */
+    --or-d:rgba(194,65,12,.09);
+    --or-b:rgba(194,65,12,.35);
+    --or-tint:#FFE9D5;
+    --or-soft:#F3E4D2;
+    --gn:#2E6B3E;         /* forest green */
+    --gn-d:rgba(46,107,62,.10);
+    --gn-soft:#E2EBD9;
+    --rd:#B23A3A;         /* warm red */
+    --rd-d:rgba(178,58,58,.08);
+    --marian:#2A3E6B;     /* deep blue accent */
+    --ink-dark:#1A1814;   /* for inverted blocks */
+    --maxw:1240px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--tx);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15.5px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{
+    overflow-x:hidden;
+    background-image:
+      radial-gradient(ellipse 70% 38% at 78% 0%, rgba(194,65,12,.05), transparent 60%),
+      radial-gradient(ellipse 50% 30% at 0% 12%, rgba(194,65,12,.025), transparent 60%);
+  }
+  /* Subtle paper grain so it doesn't read as flat marketing template */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.045;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  a{color:inherit;text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+
+  /* ---------- TYPE ---------- */
+  .mono{font-family:'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;font-size:11px;color:var(--tx2)}
+  .mono-sm{font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3)}
+  em.doc{font-family:'Fraunces',serif;font-style:italic;font-weight:500;color:var(--or)}
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-.02em;line-height:1.05}
+
+  /* ---------- LAYOUT ---------- */
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 36px;position:relative;z-index:2}
+  section{position:relative;z-index:2}
+  .rule{height:1px;background:var(--bd);width:100%}
+
+  /* ---------- NAV ---------- */
+  .nav{
+    position:sticky;top:0;z-index:50;
+    background:rgba(251,248,243,.82);
+    backdrop-filter:saturate(140%) blur(10px);
+    -webkit-backdrop-filter:saturate(140%) blur(10px);
+    border-bottom:1px solid var(--bd);
+  }
+  .nav-row{display:flex;align-items:center;justify-content:space-between;height:62px}
+  .wordmark{display:flex;align-items:baseline;gap:6px;font-size:18px;letter-spacing:-.005em}
+  .wordmark .machine{font-family:'IBM Plex Sans';font-weight:600;color:var(--tx)}
+  .wordmark .mary,.wordmark .doc{font-family:'Fraunces',serif;font-style:italic;font-weight:500;color:var(--or)}
+  .wordmark .dot{width:6px;height:6px;border-radius:50%;background:var(--or);display:inline-block;align-self:center;margin-left:2px;box-shadow:0 0 10px rgba(194,65,12,.45)}
+  .nav-links{display:flex;gap:28px;align-items:center}
+  .nav-links a{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx);font-weight:500;transition:color .15s}
+  .nav-links a:not(.btn):hover{color:var(--or)}
+  .nav-links a.btn{color:var(--bg)}
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:'IBM Plex Sans',sans-serif;font-weight:500;font-size:14px;
+    padding:11px 18px;border:1px solid var(--ink-dark);background:var(--ink-dark);color:var(--bg);
+    transition:.15s ease;border-radius:0;cursor:pointer;
+  }
+  .btn:hover{background:#000;border-color:#000;transform:translateY(-1px)}
+  .btn .arr{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--or)}
+  .btn-ghost{
+    display:inline-flex;align-items:center;gap:10px;
+    font-family:'IBM Plex Sans',sans-serif;font-weight:500;font-size:14px;
+    padding:11px 18px;border:1px solid var(--bd2);background:transparent;color:var(--tx);
+    transition:.15s;border-radius:0;cursor:pointer;
+  }
+  .btn-ghost:hover{border-color:var(--tx);background:rgba(26,24,20,.04)}
+  .nav .btn{padding:9px 14px;font-size:13px}
+  @media(max-width:760px){
+    .nav-links a:not(.book){display:none}
+    .nav .btn{padding:8px 12px;font-size:12px}
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{padding:72px 0 96px;position:relative;overflow:hidden}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:64px;align-items:center}
+  .eyebrow{display:flex;align-items:center;gap:10px;color:var(--or);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:28px;font-weight:600}
+  .eyebrow::before{content:'';width:22px;height:1px;background:var(--or)}
+  h1.hero-h{font-size:clamp(40px,5.4vw,68px);line-height:1.02;letter-spacing:-.025em;font-weight:500;max-width:720px;color:var(--tx)}
+  h1.hero-h .stat{color:var(--or);font-family:'Fraunces',serif;font-weight:500}
+  h1.hero-h .strike{color:var(--tx2);font-style:italic;font-weight:400}
+  .hero-sub{margin-top:26px;font-size:17px;line-height:1.55;color:var(--tx2);max-width:540px}
+  .hero-sub b{color:var(--tx);font-weight:600}
+  .hero-cta{display:flex;gap:14px;margin-top:36px;flex-wrap:wrap}
+  .hero-meta{margin-top:34px;display:flex;gap:28px;flex-wrap:wrap;padding-top:22px;border-top:1px solid var(--bd);max-width:540px}
+  .hero-meta .item{display:flex;flex-direction:column;gap:4px}
+  .hero-meta .num{font-family:'Fraunces',serif;font-size:22px;color:var(--tx);font-weight:500;letter-spacing:-.01em}
+  .hero-meta .lbl{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3)}
+
+  /* ---------- PHONE MOCKUP ---------- */
+  .phone-stage{
+    position:relative;display:flex;justify-content:center;align-items:center;
+    padding:30px 0 10px;
+  }
+  .phone-stage::before{
+    content:'';position:absolute;left:50%;bottom:-30px;width:78%;height:130px;transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(194,65,12,.18), rgba(194,65,12,0) 70%);
+    filter:blur(14px);pointer-events:none;
+  }
+  .phone-stage::after{
+    content:'';position:absolute;inset:0;pointer-events:none;
+    background:
+      linear-gradient(to right, var(--bd) 1px, transparent 1px) left top/22px 100% no-repeat,
+      linear-gradient(to right, var(--bd) 1px, transparent 1px) right top/22px 100% no-repeat;
+    opacity:0;
+  }
+  .phone{
+    --pw:340px;
+    width:var(--pw);
+    aspect-ratio: 9 / 19.2;
+    background:#0D0B09;
+    border:1px solid #2a2722;
+    border-radius:42px;
+    padding:11px;
+    position:relative;
+    transform:rotate(-2.2deg);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,.04) inset,
+      0 30px 60px rgba(60,45,25,.18),
+      0 8px 22px rgba(60,45,25,.12),
+      0 0 60px rgba(194,65,12,.10);
+  }
+  .phone::before{
+    content:'';position:absolute;inset:0;border-radius:42px;pointer-events:none;
+    background:linear-gradient(160deg, rgba(255,255,255,.07), rgba(255,255,255,0) 30%, rgba(255,255,255,0) 70%, rgba(255,255,255,.04));
+    mix-blend-mode:overlay;
+  }
+  .phone .notch{
+    position:absolute;top:14px;left:50%;transform:translateX(-50%);
+    width:96px;height:24px;background:#000;border-radius:14px;z-index:3;
+  }
+  .screen{
+    width:100%;height:100%;background:var(--bg);border-radius:32px;
+    overflow:hidden;display:flex;flex-direction:column;position:relative;
+    border:1px solid #1a1815;
+  }
+  .status{
+    height:34px;display:flex;justify-content:space-between;align-items:flex-end;
+    padding:6px 22px 4px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx);opacity:.85;letter-spacing:.05em;
+  }
+  .status .right{display:flex;gap:5px;align-items:center}
+  .status .bars{display:inline-flex;gap:1.5px;align-items:flex-end}
+  .status .bars i{width:2.5px;background:var(--tx);display:inline-block;border-radius:1px}
+  .status .bars i:nth-child(1){height:4px;opacity:.7}
+  .status .bars i:nth-child(2){height:6px;opacity:.85}
+  .status .bars i:nth-child(3){height:8px}
+  .status .bars i:nth-child(4){height:10px}
+  .status .batt{width:18px;height:9px;border:1px solid var(--tx);border-radius:2px;position:relative;padding:1px}
+  .status .batt::after{content:'';position:absolute;right:-3px;top:2px;width:1.5px;height:5px;background:var(--tx);border-radius:0 1px 1px 0}
+  .status .batt i{display:block;width:78%;height:100%;background:var(--gn);border-radius:1px}
+
+  .app-head{
+    display:flex;align-items:center;gap:10px;padding:10px 16px 12px;border-bottom:1px solid var(--bd);background:var(--s1);
+  }
+  .app-head .back{font-family:'JetBrains Mono',monospace;color:var(--tx2);font-size:14px}
+  .app-head .station{display:flex;flex-direction:column;flex:1;min-width:0}
+  .app-head .stn-name{font-family:'IBM Plex Sans';font-weight:600;font-size:13.5px;color:var(--tx);letter-spacing:-.005em}
+  .app-head .stn-line{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase;margin-top:2px;display:flex;align-items:center;gap:6px}
+  .app-head .stn-line .live{width:6px;height:6px;border-radius:50%;background:var(--gn);box-shadow:0 0 8px rgba(46,107,62,.55);animation:pulse 2.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  .app-head .menu{display:flex;flex-direction:column;gap:3px;align-items:center}
+  .app-head .menu i{width:3px;height:3px;border-radius:50%;background:var(--tx2)}
+
+  .convo{
+    flex:1;padding:14px 14px 10px;display:flex;flex-direction:column;gap:10px;overflow:hidden;
+    background:linear-gradient(180deg, var(--bg) 0%, var(--s1) 100%);
+  }
+  .ts{
+    align-self:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--tx3);
+    letter-spacing:.12em;text-transform:uppercase;margin:2px 0 4px;
+  }
+  .bubble{
+    max-width:84%;padding:9px 12px;border-radius:14px;font-size:12.5px;line-height:1.45;
+    border:1px solid var(--bd);
+  }
+  .bubble.user{
+    align-self:flex-end;background:var(--ink-dark);color:var(--bg);border-bottom-right-radius:5px;
+    display:inline-flex;align-items:center;gap:8px;border-color:var(--ink-dark);
+  }
+  .bubble.user .micdot{width:6px;height:6px;border-radius:50%;background:var(--or);box-shadow:0 0 6px var(--or);flex-shrink:0}
+  .bubble.mary{
+    align-self:flex-start;background:var(--bg);color:var(--tx);border-bottom-left-radius:5px;
+  }
+  .bubble.mary .who{
+    font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--or);letter-spacing:.14em;text-transform:uppercase;display:block;margin-bottom:5px;font-weight:600;
+  }
+  .opts{display:flex;flex-direction:column;gap:7px;margin-top:4px;align-self:flex-start;width:88%}
+  .opt{
+    border:1px solid var(--bd);background:var(--bg);color:var(--tx);
+    padding:9px 11px;border-radius:10px;font-size:12px;line-height:1.4;display:flex;gap:9px;align-items:flex-start;
+    transition:.18s;cursor:default;
+  }
+  .opt .lt{
+    font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--or);font-size:11px;
+    border:1px solid var(--or-b);padding:1px 5px;border-radius:4px;background:var(--or-soft);flex-shrink:0;
+    line-height:1.2;
+  }
+  .opt:hover{border-color:var(--or-b);background:var(--or-soft)}
+
+  .typing{align-self:flex-start;display:flex;gap:3px;padding:8px 12px;background:var(--bg);border:1px solid var(--bd);border-radius:14px;border-bottom-left-radius:5px}
+  .typing i{width:5px;height:5px;border-radius:50%;background:var(--tx2);animation:tdot 1.2s ease-in-out infinite}
+  .typing i:nth-child(2){animation-delay:.18s}
+  .typing i:nth-child(3){animation-delay:.36s}
+  @keyframes tdot{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
+
+  .input{
+    border-top:1px solid var(--bd);padding:10px 12px 14px;display:flex;align-items:center;gap:8px;background:var(--s1);
+  }
+  .input .field{
+    flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:18px;padding:9px 12px;
+    font-size:11.5px;color:var(--tx3);font-family:'IBM Plex Sans';
+  }
+  .input .mic{
+    width:32px;height:32px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 14px rgba(194,65,12,.25);
+  }
+  .input .mic svg{width:14px;height:14px;fill:var(--bg)}
+  .home-bar{height:5px;width:34%;background:var(--bd2);border-radius:3px;align-self:center;margin-bottom:6px;margin-top:2px}
+
+  /* ---------- MULTI-SCREEN WIREFRAMES ---------- */
+  .scr{flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden;background:var(--bg)}
+  .scr.active{display:flex}
+
+  .ph-mark{
+    width:26px;height:26px;border-radius:50%;background:var(--marian);
+    display:flex;align-items:center;justify-content:center;color:var(--bg);
+    font-family:'Fraunces',serif;font-style:italic;font-weight:500;font-size:16px;line-height:1;flex-shrink:0;
+  }
+  .chip{
+    display:inline-flex;align-items:center;gap:5px;
+    font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--tx2);font-weight:600;padding:4px 9px;border-radius:50px;
+    background:var(--s1);border:1px solid var(--bd);align-self:flex-start;
+  }
+  .chip.flare{color:var(--or);background:var(--or-soft);border-color:var(--or-b)}
+
+  /* App-head dark variant for camera screen */
+  .app-head.dark{background:var(--ink-dark);border-color:rgba(251,248,243,.1)}
+  .app-head.dark .stn-name{color:var(--bg)}
+  .app-head.dark .stn-line{color:rgba(251,248,243,.55)}
+  .app-head.dark .back{color:rgba(251,248,243,.6)}
+  .app-head.dark .menu i{background:rgba(251,248,243,.6)}
+
+  /* Recording state */
+  .input .mic.recording{box-shadow:0 0 0 4px var(--or-tint),0 0 14px rgba(194,65,12,.35);color:var(--bg);font-size:14px;font-weight:700}
+  .input .field.flare{color:var(--or);font-weight:600}
+
+  /* Голос-first input bar */
+  .input.input-vf{padding:10px 14px 16px;background:var(--s1);gap:10px}
+  .kbd-alt{width:26px;height:26px;display:flex;align-items:center;justify-content:center;opacity:.28;flex-shrink:0}
+  .kbd-alt svg{width:16px;height:16px;fill:var(--tx2)}
+  .vf-hint{flex:1;font-size:11.5px;color:var(--tx3);font-family:'IBM Plex Sans',sans-serif;letter-spacing:-.01em;line-height:1.3}
+  .mic-hero{position:relative;width:46px;height:46px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(194,65,12,.4);flex-shrink:0}
+  .mic-hero svg{width:20px;height:20px;fill:#fff;position:relative;z-index:1}
+  .mic-hero::before,.mic-hero::after{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(194,65,12,.12);animation:mic-ring 2s ease-out infinite}
+  .mic-hero::after{animation-delay:1s}
+  @keyframes mic-ring{0%{transform:scale(1);opacity:1}100%{transform:scale(2.5);opacity:0}}
+
+  /* Listening panel — Screen 2 "Описание" hero moment */
+  .listen-panel{padding:14px 14px 18px;display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--s1);border-top:1px solid var(--bd)}
+  .lp-rings{position:relative;width:64px;height:64px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .lp-ring{position:absolute;inset:0;border-radius:50%;border:1.5px solid rgba(194,65,12,.22);animation:lp-expand 2.2s ease-out infinite}
+  .lp-ring.r2{animation-delay:.65s}
+  .lp-ring.r3{animation-delay:1.3s}
+  @keyframes lp-expand{0%{transform:scale(.85);opacity:.6}100%{transform:scale(2.6);opacity:0}}
+  .lp-mic-btn{width:56px;height:56px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 3px var(--or-tint),0 4px 16px rgba(194,65,12,.45);position:relative;z-index:2}
+  .lp-mic-btn svg{width:24px;height:24px;fill:#fff}
+  .lp-label{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--or);font-weight:700;display:flex;align-items:center;gap:5px}
+  .lp-label::before{content:'●';animation:lp-blink 1.2s ease-in-out infinite}
+  @keyframes lp-blink{0%,100%{opacity:1}50%{opacity:.25}}
+  .lp-transcribe{font-size:10.5px;color:var(--tx3);font-family:'IBM Plex Sans';font-style:italic}
+
+  /* Голос attribution badge */
+  .voice-attr{align-self:flex-end;display:flex;align-items:center;gap:4px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin-top:-4px}
+  .voice-attr svg{width:10px;height:10px;fill:var(--tx3);flex-shrink:0}
+
+  /* Hero trust line */
+  .hero-trust{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--tx3);font-weight:600;margin:16px 0 0;display:flex;align-items:center;gap:8px}
+  .hero-trust::before{content:'◉';color:var(--or);font-size:10px}
+
+  /* Sticky mobile CTA */
+  .mob-cta{display:none;position:fixed;bottom:0;left:0;right:0;z-index:200;background:var(--ink-dark);border-top:1px solid rgba(251,248,243,.12);height:52px;align-items:center;justify-content:center;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+  .mob-cta.visible{transform:translateY(0)}
+  .mob-cta a{display:flex;align-items:center;gap:10px;color:var(--bg);font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:14px;letter-spacing:-.005em;text-decoration:none}
+  .mob-cta .arr{color:var(--or);font-family:'JetBrains Mono',monospace;font-weight:700}
+  @media(max-width:768px){.mob-cta{display:flex}}
+
+  /* Screen 1 — Home */
+  .home{
+    flex:1;display:flex;flex-direction:column;padding:22px 18px 16px;justify-content:space-between;
+    background:linear-gradient(180deg,var(--bg) 0%,var(--s1) 100%);
+  }
+  .home-hero{font-family:'Fraunces',serif;font-style:italic;font-weight:500;font-size:30px;line-height:1;color:var(--tx);letter-spacing:-.02em}
+  .home-hero em{color:var(--or);font-style:italic;font-weight:500}
+  .home-sub{font-size:12.5px;color:var(--tx2);margin-top:12px;line-height:1.4;max-width:90%}
+  .home-cta{
+    background:var(--ink-dark);color:var(--bg);border-radius:10px;padding:14px 16px;
+    display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;letter-spacing:-.005em;
+  }
+  .home-cta::before{content:'⌗';font-size:18px;line-height:1;color:var(--or)}
+  .home-alt{
+    text-align:center;font-size:9.5px;color:var(--tx3);margin-top:10px;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.08em;text-transform:uppercase;font-weight:600;
+  }
+
+  /* Screen 2 — QR */
+  .qr{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    background:#0a0a0a;position:relative;padding:22px;overflow:hidden;
+  }
+  .qr::before{
+    content:'';position:absolute;inset:0;
+    background:
+      linear-gradient(135deg,rgba(60,55,50,.6) 0%,rgba(25,22,20,.9) 60%,#0a0a0a 100%),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 1px,transparent 1px 4px);
+  }
+  .qr-viewer{
+    position:relative;width:100%;aspect-ratio:1/1;
+    border:2px solid var(--or);border-radius:10px;
+    background:var(--bg);padding:12px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .qr-viewer::before,.qr-viewer::after{content:'';position:absolute;width:18px;height:18px;border:2px solid var(--or);z-index:3}
+  .qr-viewer::before{top:-2px;left:-2px;border-right:0;border-bottom:0}
+  .qr-viewer::after{bottom:-2px;right:-2px;border-left:0;border-top:0}
+  .qr-code{width:100%;height:100%}
+  .qr-scan{position:absolute;left:6%;right:6%;top:42%;height:2px;background:var(--or);box-shadow:0 0 8px var(--or),0 0 16px var(--or);z-index:2}
+  .qr-tag{
+    position:absolute;bottom:-30px;left:50%;transform:translateX(-50%);
+    font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--bg);white-space:nowrap;font-weight:700;background:rgba(0,0,0,.65);padding:5px 10px;border-radius:3px;
+  }
+  .qr-found{
+    position:absolute;top:14px;right:14px;
+    font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--or);
+    padding:5px 9px;background:rgba(194,65,12,.18);border:1px solid var(--or);
+    border-radius:50px;z-index:3;font-weight:700;text-transform:uppercase;
+  }
+  .qr-found::before{content:'◉ '}
+
+  /* Screen 5 — Photo */
+  .photo{flex:1;display:flex;flex-direction:column;background:var(--ink-dark);padding:14px;position:relative}
+  .photo-vf{flex:1;border:2px solid rgba(251,248,243,.4);border-radius:9px;position:relative;overflow:hidden}
+  .photo-vf svg.machine{width:100%;height:100%;display:block}
+  .photo-vf::after{content:'';position:absolute;inset:26% 30% 30% 34%;border:2px dashed var(--or);border-radius:4px;pointer-events:none}
+  .photo-reticle{
+    position:absolute;top:14px;left:14px;
+    font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--or);font-weight:700;padding:5px 9px;background:rgba(194,65,12,.18);border:1px solid var(--or);
+    border-radius:50px;z-index:3;
+  }
+  .photo-reticle::before{content:'◉ '}
+  .photo-label{
+    position:absolute;top:27%;left:56%;transform:translateY(-50%);
+    font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.06em;font-weight:700;text-transform:uppercase;
+    color:var(--or);background:rgba(0,0,0,.78);padding:4px 7px;border-radius:3px;white-space:nowrap;
+  }
+  .photo-hint{
+    position:absolute;bottom:64px;left:14px;right:14px;
+    font-size:10.5px;color:var(--bg);text-align:center;
+    font-family:'JetBrains Mono',monospace;letter-spacing:.04em;
+    background:rgba(0,0,0,.72);padding:7px 9px;border-radius:4px;font-weight:500;
+  }
+  .photo-shutter{
+    position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+    width:46px;height:46px;border-radius:50%;background:var(--bg);
+    border:3px solid var(--ink-dark);box-shadow:0 0 0 2px var(--bg);
+  }
+
+  /* Screen 6 — Запись о сбое */
+  .fault{flex:1;padding:14px 16px;background:var(--bg);overflow:hidden;display:flex;flex-direction:column;gap:9px}
+  .fault-headline{font-family:'Fraunces',serif;font-style:italic;font-weight:500;font-size:16px;line-height:1.25;color:var(--tx);letter-spacing:-.01em}
+  .fault-headline b{font-style:normal;color:var(--or);font-weight:600}
+  .fault-meta{display:flex;gap:10px;flex-wrap:wrap;font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);font-weight:600}
+  .fault-meta b{color:var(--tx);font-weight:700}
+  .fault-row{display:grid;grid-template-columns:50px 1fr;gap:8px;align-items:baseline;padding:6px 0;border-top:1px solid var(--bd)}
+  .fault-row:first-of-type{border-top:0;padding-top:2px}
+  .fault-row .lbl{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);font-weight:700;line-height:1.3}
+  .fault-row .val{font-size:11px;line-height:1.4;color:var(--tx)}
+  .fault-row .val em{font-family:'Fraunces',serif;font-style:italic;color:var(--tx2);font-size:10.5px}
+  .fault-footer{margin-top:auto;display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:1px solid var(--bd)}
+  .fault-stamp{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--gn);font-weight:700}
+  .fault-stamp::before{content:'◆ '}
+  .fault-actions{display:flex;gap:5px}
+  .fault-btn{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.04em;font-weight:600;text-transform:uppercase;padding:5px 9px;border-radius:4px;border:1px solid var(--bd);background:var(--bg);color:var(--tx2)}
+  .fault-btn.primary{background:var(--ink-dark);color:var(--bg);border-color:var(--ink-dark)}
+
+  /* Phone navigation tabs */
+  .phone-nav{
+    margin:18px auto 0;display:grid;grid-template-columns:repeat(6,1fr);gap:3px;
+    width:100%;max-width:340px;padding:0 4px;
+  }
+  .nav-btn{
+    appearance:none;border:0;background:transparent;cursor:pointer;
+    padding:10px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;
+    border-top:2px solid var(--bd);transition:.15s ease;font-family:inherit;
+  }
+  .nav-btn:hover{border-top-color:var(--tx2)}
+  .nav-btn.active{border-top-color:var(--or)}
+  .nav-btn .nav-num{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx3);font-weight:600;letter-spacing:.06em}
+  .nav-btn.active .nav-num{color:var(--or)}
+  .nav-btn .nav-name{font-size:9.5px;color:var(--tx2);font-weight:500;letter-spacing:-.005em}
+  .nav-btn.active .nav-name{color:var(--tx);font-weight:700}
+  .phone-hint{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--tx3);font-weight:500;margin-top:14px;text-align:center;
+  }
+  .phone-hint b{color:var(--or);font-weight:700}
+
+  /* tag floating next to phone */
+  .phone-tag{
+    position:absolute;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx3);
+    letter-spacing:.14em;text-transform:uppercase;display:flex;align-items:center;gap:8px;
+  }
+  .phone-tag::before{content:'';width:18px;height:1px;background:var(--bd2)}
+  .phone-tag{z-index:4}
+  .phone-tag.t1{top:14%;right:-12px}
+  .phone-tag.t2{bottom:14%;left:-140px}
+  .phone-tag.t2::before{order:2;margin-left:8px;margin-right:0}
+
+  @media(max-width:1000px){
+    .hero{padding:48px 0 64px}
+    .hero-grid{grid-template-columns:1fr;gap:48px}
+    .hero-meta{max-width:none}
+    .phone-tag{display:none}
+    .phone{--pw:300px}
+  }
+  @media(max-width:520px){
+    .wrap{padding:0 20px}
+    .hero{padding:40px 0 56px}
+    h1.hero-h{font-size:36px}
+    .hero-sub{font-size:15px}
+    .hero-meta{gap:20px}
+    .hero-meta .num{font-size:19px}
+    .phone{--pw:270px}
+    .hero-cta .btn,.hero-cta .btn-ghost{width:100%;justify-content:center}
+  }
+
+  /* ---------- SECTION HEAD ---------- */
+  .sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;margin-bottom:38px;flex-wrap:wrap}
+  .sec-tag{display:flex;align-items:center;gap:10px;color:var(--or);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:14px;font-weight:600}
+  .sec-tag::before{content:'';width:18px;height:1px;background:var(--or)}
+  .sec-h{font-size:clamp(30px,3.6vw,46px);line-height:1.05;letter-spacing:-.02em;max-width:720px;color:var(--tx)}
+  .sec-sub{color:var(--tx2);max-width:420px;font-size:15px;line-height:1.6}
+
+  /* ---------- BEFORE / AFTER ---------- */
+  .ba{padding:96px 0 96px;border-top:1px solid var(--bd);background:linear-gradient(180deg, var(--bg) 0%, var(--s1) 100%)}
+
+  /* unmissable column header strip */
+  .ba-headers{
+    display:grid;grid-template-columns:1fr auto 1fr;
+    border:1px solid var(--bd);border-bottom:0;
+    background:var(--bg);
+  }
+  .ba-header{
+    padding:22px 26px;display:flex;align-items:center;gap:18px;
+    position:relative;min-height:96px;
+  }
+  .ba-header.bad{
+    background:linear-gradient(90deg, rgba(178,58,58,.16), rgba(178,58,58,.04) 80%, var(--bg));
+    border-right:1px solid var(--bd);
+  }
+  .ba-header.good{
+    background:linear-gradient(270deg, rgba(46,107,62,.16), rgba(46,107,62,.04) 80%, var(--bg));
+    border-left:1px solid var(--bd);
+  }
+  .ba-header.bad::before, .ba-header.good::before{
+    content:'';position:absolute;left:0;right:0;bottom:-1px;height:4px;
+  }
+  .ba-header.bad::before{background:var(--rd)}
+  .ba-header.good::before{background:var(--gn)}
+  .ba-x{
+    font-family:'Fraunces',serif;font-size:32px;line-height:1;font-weight:500;
+    width:50px;height:50px;display:flex;align-items:center;justify-content:center;
+    border-radius:50%;flex-shrink:0;
+  }
+  .ba-header.bad .ba-x{background:var(--rd);color:var(--bg)}
+  .ba-header.good .ba-x{background:var(--gn);color:var(--bg)}
+  .ba-header-pre{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    font-weight:700;margin-bottom:5px;
+  }
+  .ba-header.bad .ba-header-pre{color:var(--rd)}
+  .ba-header.good .ba-header-pre{color:var(--gn)}
+  .ba-header-main{
+    font-family:'Fraunces',serif;font-weight:500;font-size:30px;letter-spacing:-.02em;line-height:1;color:var(--tx);
+  }
+  .ba-header-main em{font-style:italic;color:var(--or);font-weight:500}
+  .ba-vs{
+    display:flex;align-items:center;justify-content:center;
+    padding:0 18px;background:var(--bg);position:relative;
+    font-family:'Fraunces',serif;font-style:italic;font-weight:500;
+    font-size:18px;color:var(--tx3);letter-spacing:.04em;
+  }
+  .ba-vs span{
+    background:var(--bg);border:1px solid var(--bd2);
+    width:44px;height:44px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--tx2);
+  }
+
+  .ba-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd);border:1px solid var(--bd)}
+  .ba-cell{background:var(--bg);padding:30px 28px;display:flex;flex-direction:column;gap:18px;position:relative}
+  .ba-cell.bad::before, .ba-cell.good::before{
+    content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  }
+  .ba-cell.bad::before{background:var(--rd)}
+  .ba-cell.good::before{background:var(--gn)}
+  .ba-head{display:flex;justify-content:space-between;align-items:center;gap:16px}
+  .ba-head .ttl{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx2);font-weight:600}
+  .ba-head .stamp{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;
+    padding:3px 8px;border-radius:0;font-weight:600;
+  }
+  .ba-cell.bad .stamp{background:var(--rd-d);color:var(--rd);border:1px solid rgba(178,58,58,.3)}
+  .ba-cell.good .stamp{background:var(--gn-d);color:var(--gn);border:1px solid rgba(46,107,62,.3)}
+
+  .ba-when{font-family:'Fraunces',serif;font-weight:500;font-size:24px;letter-spacing:-.015em;line-height:1.2;color:var(--tx)}
+  .ba-when .time{color:var(--or);font-style:italic;font-weight:500}
+  .ba-body{color:var(--tx2);font-size:14.5px;line-height:1.65}
+  .ba-body b{color:var(--tx);font-weight:600}
+
+  .timebar{margin-top:auto;padding-top:18px;border-top:1px dashed var(--bd2)}
+  .tb-lbl{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+  .tb-track{height:8px;background:var(--s2);border:1px solid var(--bd);position:relative;overflow:hidden}
+  .tb-fill{height:100%;width:0;transition:width 1.4s cubic-bezier(.2,.7,.2,1)}
+  .ba-cell.bad .tb-fill{background:repeating-linear-gradient(45deg,var(--rd),var(--rd) 6px,#8a2d2d 6px,#8a2d2d 12px);box-shadow:0 0 12px rgba(178,58,58,.18)}
+  .ba-cell.good .tb-fill{background:var(--gn);box-shadow:0 0 10px rgba(46,107,62,.22)}
+  .tb-end{margin-top:8px;display:flex;justify-content:space-between;align-items:baseline}
+  .tb-end .big{font-family:'Fraunces',serif;font-size:28px;font-weight:500;letter-spacing:-.02em}
+  .ba-cell.bad .tb-end .big{color:var(--rd)}
+  .ba-cell.good .tb-end .big{color:var(--gn)}
+  .tb-end .unit{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase}
+
+  .ba-pair{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd);border:1px solid var(--bd);margin-top:1px}
+  .ba-stack{display:grid;grid-template-rows:auto auto;gap:0;background:var(--bd)}
+
+  .ba-punch{
+    margin-top:32px;padding:24px 28px;border:1px solid var(--bd);border-left:3px solid var(--or);
+    background:linear-gradient(90deg, rgba(194,65,12,.06), transparent 70%);
+    font-family:'Fraunces',serif;font-size:18px;line-height:1.5;color:var(--tx);font-weight:500;
+  }
+  .ba-punch b{color:var(--or);font-weight:600;font-style:italic}
+  @media(max-width:820px){
+    .ba-grid{grid-template-columns:1fr}
+    .ba{padding:64px 0}
+    .ba-headers{grid-template-columns:1fr}
+    .ba-header.bad{border-right:0;border-bottom:1px solid var(--bd)}
+    .ba-header.good{border-left:0}
+    .ba-vs{display:none}
+    .ba-header-main{font-size:24px}
+  }
+
+  /* ---------- HOW IT WORKS ---------- */
+  .how{padding:96px 0;border-top:1px solid var(--bd);background:var(--bg)}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--bd);background:var(--bd)}
+  .step{background:var(--bg);padding:30px 26px 28px;display:flex;flex-direction:column;gap:14px;position:relative;min-height:230px}
+  .step-num{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--or);letter-spacing:.16em;font-weight:600;
+    display:flex;align-items:center;gap:10px;
+  }
+  .step-num::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--or-b),transparent)}
+  .step-icon{
+    width:46px;height:46px;border:1px solid var(--bd2);display:flex;align-items:center;justify-content:center;
+    background:var(--s1);
+  }
+  .step-icon svg{width:22px;height:22px;stroke:var(--tx);fill:none;stroke-width:1.4}
+  .step-ttl{font-family:'Fraunces',serif;font-size:21px;letter-spacing:-.01em;font-weight:500;line-height:1.15;color:var(--tx)}
+  .step-desc{color:var(--tx2);font-size:13.5px;line-height:1.55;margin-top:auto}
+  @media(max-width:900px){
+    .steps{grid-template-columns:1fr 1fr}
+  }
+  @media(max-width:520px){
+    .steps{grid-template-columns:1fr}
+    .how{padding:64px 0}
+  }
+
+  /* ---------- NUMBERS ---------- */
+  .nums{padding:96px 0;border-top:1px solid var(--bd);background:var(--s1)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--bd);border:1px solid var(--bd)}
+  .stat{background:var(--bg);padding:36px 28px;display:flex;flex-direction:column;gap:10px;position:relative}
+  .stat .cat{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);font-weight:600}
+  .stat .num{
+    font-family:'Fraunces',serif;font-size:clamp(48px,5vw,68px);font-weight:500;letter-spacing:-.035em;line-height:.95;color:var(--tx);
+  }
+  .stat .lbl{color:var(--tx2);font-size:14px;line-height:1.4;margin-top:6px}
+  .stat .src{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase;margin-top:auto;padding-top:18px}
+  .stat.hero-stat .num{color:var(--or);font-style:italic}
+  .stat.hero-stat{background:linear-gradient(180deg, rgba(194,65,12,.07), var(--bg) 60%)}
+  @media(max-width:820px){
+    .stats{grid-template-columns:1fr 1fr}
+    .nums{padding:64px 0}
+  }
+
+  /* ---------- CREDIBILITY ---------- */
+  .cred{padding:96px 0;border-top:1px solid var(--bd);background:var(--bg)}
+  .cred-head{
+    font-family:'Fraunces',serif;font-size:clamp(28px,3.4vw,40px);font-weight:500;letter-spacing:-.02em;
+    line-height:1.15;max-width:880px;margin-bottom:42px;color:var(--tx);
+  }
+  .cred-head em{font-style:italic;font-weight:500;color:var(--or)}
+  .founders{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd);border:1px solid var(--bd)}
+  .founder{background:var(--bg);padding:28px 30px;display:flex;flex-direction:column;gap:10px}
+  .founder .name{font-family:'Fraunces',serif;font-size:24px;font-weight:500;letter-spacing:-.01em;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;color:var(--tx)}
+  .founder .role{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--or);letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+  .founder .bio{color:var(--tx2);font-size:14.5px;line-height:1.6;max-width:520px}
+  .founder .bio b{color:var(--tx);font-weight:600}
+  .founder .links{margin-top:6px;display:flex;gap:14px;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);font-weight:600}
+  .founder .links a{color:var(--tx2);transition:color .15s}
+  .founder .links a:hover{color:var(--or)}
+
+  .pilot-line{
+    margin-top:36px;padding:22px 28px;border:1px solid var(--bd);
+    display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+    background:linear-gradient(90deg, rgba(194,65,12,.05), transparent 60%);
+  }
+  .pilot-line .lt{display:flex;align-items:center;gap:14px;color:var(--tx);font-size:15px}
+  .pilot-line .lt .dot{width:8px;height:8px;border-radius:50%;background:var(--gn);box-shadow:0 0 12px rgba(46,107,62,.5);animation:pulse 2.2s ease-in-out infinite}
+  .pilot-line .rt{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--tx3);letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+  @media(max-width:760px){
+    .founders{grid-template-columns:1fr}
+    .cred{padding:64px 0}
+  }
+
+  /* ---------- BOOK ---------- */
+  section.book{padding:96px 0;border-top:1px solid var(--bd);background:linear-gradient(180deg, var(--s1) 0%, var(--bg) 60%)}
+  .book-grid{display:grid;grid-template-columns:1fr 1.05fr;gap:56px;align-items:stretch}
+  .book-left{display:flex;flex-direction:column}
+  .book h2{font-size:clamp(36px,4.2vw,54px);line-height:1.05;letter-spacing:-.02em;color:var(--tx);margin-top:0}
+  .book h2 em{font-style:italic;color:var(--or);font-weight:500}
+  .book .lede{margin-top:22px;color:var(--tx2);font-size:16.5px;line-height:1.6}
+  .book .lede b{color:var(--tx);font-weight:600}
+  .book-bullets{margin-top:30px;display:flex;flex-direction:column;gap:14px}
+  .book-bullets > div{display:flex;gap:12px;align-items:flex-start;color:var(--tx);font-size:14.5px}
+  .book-bullets > div::before{content:'';width:10px;height:10px;background:var(--or);margin-top:7px;flex-shrink:0;transform:rotate(45deg)}
+  .book-bullets b{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--or);letter-spacing:.12em;text-transform:uppercase;display:block;margin-bottom:2px;font-weight:600}
+  .book-bullets span{color:var(--tx2);font-size:13.5px;display:block;margin-top:2px;line-height:1.5}
+
+  .book-fb{margin-top:auto;padding-top:30px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--tx3);letter-spacing:.1em;text-transform:uppercase;font-weight:500}
+  .book-fb a{color:var(--or);font-weight:600}
+  .book-fb a:hover{text-decoration:underline}
+
+  .cal-frame{
+    border:1px solid var(--bd);background:var(--bg);position:relative;
+    display:flex;flex-direction:column;min-height:720px;
+  }
+  .cal-frame-head{
+    padding:14px 18px;border-bottom:1px solid var(--bd);background:var(--s1);
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx2);font-weight:600;
+    display:flex;align-items:center;gap:10px;flex-shrink:0;
+  }
+  .cal-frame-head::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--gn);box-shadow:0 0 8px rgba(46,107,62,.5);animation:pulse 2.2s ease-in-out infinite}
+  .cal-body{flex:1;position:relative;min-height:680px}
+  .cal-frame iframe{display:block;width:100%;height:680px;border:0;background:var(--bg)}
+  .cal-loading{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+    color:var(--tx3);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    pointer-events:none;font-weight:600;
+  }
+  .cal-loading .spin{width:18px;height:18px;border:2px solid var(--bd2);border-top-color:var(--or);border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media(max-width:900px){
+    .book-grid{grid-template-columns:1fr;gap:40px}
+    section.book{padding:64px 0}
+    .cal-frame{min-height:660px}
+    .cal-body, .cal-frame iframe{min-height:620px;height:620px}
+  }
+
+  /* ---------- FOOTER ---------- */
+  /* Inverted dark endcap — keeps contrast with the cream body */
+  footer{padding:48px 0 56px;border-top:1px solid var(--bd);background:var(--ink-dark);color:var(--bg)}
+  .ft-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:32px;align-items:center}
+  .ft-left .wordmark .machine{color:var(--bg)}
+  .ft-left .wordmark .mary{color:var(--or)}
+  .ft-left .tag{margin-top:8px;color:rgba(251,248,243,.55);font-size:13px;max-width:340px}
+  .ft-mid{text-align:center;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(251,248,243,.5);font-weight:500}
+  .ft-mid a{color:rgba(251,248,243,.85);transition:color .15s}
+  .ft-mid a:hover{color:var(--or)}
+  .ft-right{display:flex;justify-content:flex-end;gap:24px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:rgba(251,248,243,.7);font-weight:500}
+  .ft-right a:hover{color:var(--or)}
+  .ft-rule{margin-top:32px;padding-top:18px;border-top:1px solid rgba(251,248,243,.1);display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(251,248,243,.4)}
+  @media(max-width:720px){
+    .ft-grid{grid-template-columns:1fr;text-align:left;gap:22px}
+    .ft-mid,.ft-right{text-align:left;justify-content:flex-start}
+    .ft-rule{flex-direction:column;gap:8px}
+  }
+
+  /* ---------- MACHINES STRIP ---------- */
+  .machines{padding:40px 0;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);background:var(--bg);overflow:hidden}
+  .machines-label{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx3);text-align:center;margin-bottom:22px;font-weight:600}
+  .marquee-wrapper{display:flex;flex-direction:column;gap:10px}
+  .marquee-outer{overflow:hidden;display:flex}
+  .marquee-outer:hover .marquee-inner{animation-play-state:paused}
+  .marquee-inner{display:flex;white-space:nowrap;animation:mq-left 58s linear infinite}
+  .marquee-inner.right{animation:mq-right 52s linear infinite}
+  @keyframes mq-left{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+  @keyframes mq-right{0%{transform:translateX(-50%)}100%{transform:translateX(0)}}
+  .mi{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--tx2);padding:5px 0}
+  .mi::after{content:'·';margin:0 18px;color:var(--bd2);font-size:14px}
+  .marquee-outer.row-1 .mi{color:var(--tx);font-weight:600;font-size:12.5px}
+  .marquee-outer.row-2 .mi{color:var(--tx3);font-weight:400;font-size:12px}
+  .machines-sub{text-align:center;font-size:14px;color:var(--tx2);margin-top:22px;line-height:1.5;padding:0 20px}
+
+  /* ---------- ESCALATION ---------- */
+  .esc{padding:96px 0;border-top:1px solid var(--bd);background:var(--s1)}
+  .esc-split{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bd);border:1px solid var(--bd);margin-top:48px}
+  .esc-path{background:var(--bg);padding:28px 26px;display:flex;flex-direction:column;gap:0}
+  .esc-path-hd{
+    font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;
+    margin-bottom:20px;display:flex;align-items:center;gap:8px;
+  }
+  .esc-path.path-a .esc-path-hd{color:var(--gn)}
+  .esc-path.path-b .esc-path-hd{color:var(--or)}
+  .esc-step{border:1px solid var(--bd);padding:18px 20px;background:var(--bg);position:relative}
+  .esc-step+.esc-step{margin-top:1px}
+  .esc-step::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+  .esc-path.path-a .esc-step::before{background:var(--gn)}
+  .esc-path.path-b .esc-step::before{background:var(--or)}
+  .esc-step .step-lbl{font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--tx3);margin-bottom:6px;font-weight:600}
+  .esc-step .step-ttl{font-family:'Fraunces',serif;font-size:19px;font-weight:500;color:var(--tx);letter-spacing:-.01em;line-height:1.15}
+  .esc-step .step-body{color:var(--tx2);font-size:13px;line-height:1.55;margin-top:6px}
+  .esc-pkg{
+    margin-top:14px;border:1px solid var(--or-b);background:var(--or-soft);padding:12px 14px;
+    display:flex;flex-direction:column;gap:8px;
+  }
+  .esc-pkg-hd{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--or);font-weight:700;margin-bottom:2px}
+  .esc-pkg-item{display:flex;align-items:flex-start;gap:10px;font-size:12.5px;color:var(--tx);line-height:1.4}
+  .esc-pkg-item .pk{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--or);font-weight:700;flex-shrink:0;border:1px solid var(--or-b);padding:1px 5px;background:var(--bg);border-radius:3px}
+  .esc-feedback{
+    margin-top:1px;padding:18px 20px;border:1px solid var(--bd);border-left:3px solid var(--gn);
+    background:linear-gradient(90deg,var(--gn-d),transparent 80%);
+  }
+  .esc-feedback-ttl{font-family:'Fraunces',serif;font-size:17px;font-weight:500;color:var(--tx);letter-spacing:-.01em;margin-bottom:5px;display:flex;align-items:center;gap:10px}
+  .esc-feedback-ttl::before{content:'↩';font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gn);font-weight:700}
+  .esc-feedback-body{font-size:13px;color:var(--tx2);line-height:1.55}
+  .esc-punch{
+    margin-top:32px;padding:24px 28px;border:1px solid var(--bd);border-left:3px solid var(--or);
+    background:linear-gradient(90deg,rgba(194,65,12,.06),transparent 70%);
+    font-family:'Fraunces',serif;font-size:20px;line-height:1.5;color:var(--tx);font-weight:500;
+  }
+  .esc-punch b{color:var(--or);font-style:italic}
+  @media(max-width:820px){
+    .esc-split{grid-template-columns:1fr}
+    .esc{padding:64px 0}
+  }
+
+  /* ---------- FAQ ---------- */
+  .faq{padding:96px 0;border-top:1px solid var(--bd);background:var(--bg)}
+  .faq-list{margin-top:48px;border-top:1px solid var(--bd)}
+  .faq-item{border-bottom:1px solid var(--bd)}
+  .faq-q{
+    width:100%;display:flex;align-items:center;justify-content:space-between;gap:24px;
+    padding:22px 0;cursor:pointer;background:none;border:none;text-align:left;
+    font-family:'IBM Plex Sans',sans-serif;font-size:16.5px;font-weight:600;
+    color:var(--tx);line-height:1.35;transition:color .15s;
+  }
+  .faq-q:hover{color:var(--or)}
+  .faq-toggle{
+    flex-shrink:0;width:26px;height:26px;border:1px solid var(--bd2);border-radius:2px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-size:15px;line-height:1;font-weight:400;
+    color:var(--tx3);transition:color .2s,border-color .2s,transform .25s;
+  }
+  .faq-toggle::after{content:'+'}
+  .faq-item.open .faq-toggle{color:var(--or);border-color:var(--or-b);transform:rotate(45deg)}
+  .faq-a{max-height:0;overflow:hidden;transition:max-height .38s cubic-bezier(.4,0,.2,1)}
+  .faq-a-inner{padding-bottom:24px;color:var(--tx2);font-size:14px;line-height:1.75;max-width:680px}
+  @media(max-width:600px){
+    .faq{padding:64px 0}
+    .faq-q{font-size:15px;padding:18px 0}
+  }
+
+  /* ---------- REVEAL ---------- */
+  .reveal{opacity:0;transform:translateY(8px);transition:opacity .5s ease, transform .5s ease}
+  .reveal.in{opacity:1;transform:none}
+
+</style>
+</head>
+<body>
+
+<!-- ========== NAV ========== -->
+<header class="nav">
+  <div class="wrap nav-row">
+    <a href="#top" class="wordmark" aria-label="Masterdoc — главная">
+      <span class="machine">master</span><span class="doc">doc</span><span class="dot"></span>
+    </a>
+    <nav class="nav-links">
+      <a href="#how">Как это работает</a>
+      <a href="#numbers">Цифры</a>
+      <a href="#team">Команда</a>
+      <a href="#book" class="book">Демо</a>
+      <a href="#book" class="btn"><span>Демо</span><span class="arr">→</span></a>
+    </nav>
+  </div>
+</header>
+
+<a id="top"></a>
+
+<!-- ========== HERO ========== -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <div class="eyebrow">ИИ-копилот для поиска неисправностей в цеху</div>
+      <h1 class="hero-h">
+        <span class="stat">25</span> случаев простоя в&nbsp;месяц.<br />
+        Операторы сами не справляются ни с <em class="doc">одним</em><br />из них.
+      </h1>
+      <p class="hero-sub">
+        <em class="doc">Masterdoc</em> ведёт операторов через поиск и устранение неисправностей — шаг за шагом, на основе <b>вашего оборудования</b> и <b>истории сбоев</b>. Каждое событие становится записью. Знания накапливаются. Они не уходят на пенсию, не забываются и не зависят от смены.
+      </p>
+      <p class="hero-trust">Пилот с производителями промышленного оборудования и сетей эксплуатации.</p>
+      <div class="hero-cta">
+        <a href="#book" class="btn"><span>Демо</span><span class="arr">→</span></a>
+        <a href="#before-after" class="btn-ghost"><span>Как это работает</span><span class="arr">↓</span></a>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="phone-stage" id="phoneStage">
+        <span class="phone-tag t1">В эфире · 02:14</span>
+        <span class="phone-tag t2">Голос или текст</span>
+
+        <!-- ============ PHONE ============ -->
+        <div class="phone" role="img" aria-label="Приложение Masterdoc для оператора — интерактивный прототип">
+          <div class="notch"></div>
+          <div class="screen">
+            <div class="status">
+              <span>2:14</span>
+              <span class="right">
+                <span class="bars"><i></i><i></i><i></i><i></i></span>
+                <span style="font-size:9px;letter-spacing:.05em">LTE</span>
+                <span class="batt"><i></i></span>
+              </span>
+            </div>
+
+            <!-- Screen 1 — QR scan -->
+            <div class="scr" data-screen="2">
+              <div class="qr">
+                <div class="qr-viewer">
+                  <div class="qr-found">НАЙДЕНО</div>
+                  <svg class="qr-code" viewBox="0 0 29 29" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="29" height="29" fill="#FBF8F3"/>
+                    <g fill="#1A1814">
+                      <rect x="0" y="0" width="7" height="7"/>
+                      <rect x="22" y="0" width="7" height="7"/>
+                      <rect x="0" y="22" width="7" height="7"/>
+                    </g>
+                    <g fill="#FBF8F3">
+                      <rect x="1" y="1" width="5" height="5"/>
+                      <rect x="23" y="1" width="5" height="5"/>
+                      <rect x="1" y="23" width="5" height="5"/>
+                    </g>
+                    <g fill="#1A1814">
+                      <rect x="2" y="2" width="3" height="3"/>
+                      <rect x="24" y="2" width="3" height="3"/>
+                      <rect x="2" y="24" width="3" height="3"/>
+                      <rect x="9" y="2" width="1" height="1"/><rect x="11" y="2" width="2" height="1"/>
+                      <rect x="14" y="2" width="1" height="1"/><rect x="17" y="2" width="2" height="1"/>
+                      <rect x="20" y="2" width="1" height="1"/>
+                      <rect x="9" y="4" width="2" height="1"/><rect x="13" y="4" width="1" height="1"/>
+                      <rect x="15" y="4" width="2" height="1"/><rect x="19" y="4" width="2" height="1"/>
+                      <rect x="8" y="6" width="1" height="1"/><rect x="10" y="6" width="1" height="1"/>
+                      <rect x="12" y="6" width="1" height="1"/><rect x="14" y="6" width="1" height="1"/>
+                      <rect x="16" y="6" width="1" height="1"/><rect x="18" y="6" width="1" height="1"/>
+                      <rect x="20" y="6" width="1" height="1"/>
+                      <rect x="6" y="8" width="1" height="1"/><rect x="6" y="10" width="1" height="1"/>
+                      <rect x="6" y="12" width="1" height="1"/><rect x="6" y="14" width="1" height="1"/>
+                      <rect x="6" y="16" width="1" height="1"/><rect x="6" y="18" width="1" height="1"/>
+                      <rect x="6" y="20" width="1" height="1"/>
+                      <rect x="8" y="8" width="2" height="1"/><rect x="11" y="8" width="1" height="2"/>
+                      <rect x="13" y="8" width="2" height="2"/><rect x="16" y="8" width="1" height="1"/>
+                      <rect x="18" y="8" width="2" height="1"/><rect x="21" y="8" width="1" height="2"/>
+                      <rect x="23" y="8" width="1" height="1"/><rect x="25" y="8" width="2" height="1"/>
+                      <rect x="9" y="10" width="1" height="2"/><rect x="12" y="10" width="2" height="1"/>
+                      <rect x="15" y="10" width="1" height="2"/><rect x="17" y="10" width="2" height="2"/>
+                      <rect x="20" y="10" width="1" height="1"/><rect x="22" y="10" width="1" height="2"/>
+                      <rect x="24" y="10" width="2" height="1"/><rect x="27" y="10" width="1" height="2"/>
+                      <rect x="8" y="11" width="1" height="2"/><rect x="10" y="12" width="2" height="1"/>
+                      <rect x="13" y="12" width="1" height="1"/><rect x="16" y="12" width="1" height="2"/>
+                      <rect x="19" y="12" width="1" height="1"/><rect x="21" y="12" width="2" height="1"/>
+                      <rect x="24" y="12" width="1" height="2"/><rect x="26" y="12" width="1" height="1"/>
+                      <rect x="11" y="13" width="2" height="1"/><rect x="14" y="13" width="1" height="2"/>
+                      <rect x="17" y="13" width="1" height="1"/><rect x="19" y="13" width="2" height="2"/>
+                      <rect x="23" y="13" width="1" height="1"/><rect x="25" y="13" width="1" height="2"/>
+                      <rect x="8" y="14" width="1" height="1"/><rect x="10" y="14" width="1" height="2"/>
+                      <rect x="12" y="14" width="1" height="1"/><rect x="22" y="14" width="1" height="1"/>
+                      <rect x="27" y="14" width="1" height="1"/>
+                      <rect x="9" y="15" width="1" height="1"/><rect x="12" y="15" width="2" height="1"/>
+                      <rect x="16" y="15" width="2" height="1"/><rect x="20" y="15" width="1" height="2"/>
+                      <rect x="24" y="15" width="1" height="1"/><rect x="26" y="15" width="2" height="1"/>
+                      <rect x="8" y="16" width="2" height="1"/><rect x="11" y="16" width="1" height="2"/>
+                      <rect x="14" y="16" width="1" height="2"/><rect x="17" y="16" width="2" height="1"/>
+                      <rect x="21" y="16" width="2" height="1"/><rect x="25" y="16" width="1" height="2"/>
+                      <rect x="9" y="17" width="1" height="1"/><rect x="13" y="17" width="1" height="1"/>
+                      <rect x="16" y="17" width="1" height="2"/><rect x="19" y="17" width="1" height="1"/>
+                      <rect x="22" y="17" width="2" height="1"/><rect x="27" y="17" width="1" height="1"/>
+                      <rect x="8" y="18" width="1" height="2"/><rect x="10" y="18" width="2" height="1"/>
+                      <rect x="13" y="18" width="2" height="1"/><rect x="18" y="18" width="2" height="2"/>
+                      <rect x="21" y="18" width="1" height="1"/><rect x="23" y="18" width="1" height="2"/>
+                      <rect x="26" y="18" width="1" height="1"/>
+                      <rect x="12" y="19" width="1" height="1"/><rect x="15" y="19" width="1" height="1"/>
+                      <rect x="17" y="19" width="1" height="1"/><rect x="22" y="19" width="1" height="2"/>
+                      <rect x="25" y="19" width="2" height="1"/>
+                      <rect x="9" y="20" width="2" height="1"/><rect x="12" y="20" width="2" height="1"/>
+                      <rect x="15" y="20" width="1" height="2"/><rect x="17" y="20" width="2" height="1"/>
+                      <rect x="20" y="20" width="1" height="2"/><rect x="24" y="20" width="1" height="2"/>
+                      <rect x="26" y="20" width="1" height="2"/>
+                      <rect x="8" y="22" width="1" height="2"/><rect x="10" y="22" width="1" height="1"/>
+                      <rect x="13" y="22" width="2" height="1"/><rect x="16" y="22" width="1" height="2"/>
+                      <rect x="19" y="22" width="1" height="1"/><rect x="22" y="22" width="2" height="2"/>
+                      <rect x="25" y="22" width="1" height="1"/><rect x="27" y="22" width="1" height="2"/>
+                      <rect x="9" y="23" width="1" height="1"/><rect x="11" y="23" width="2" height="1"/>
+                      <rect x="14" y="23" width="1" height="2"/><rect x="17" y="23" width="2" height="1"/>
+                      <rect x="20" y="23" width="2" height="1"/><rect x="25" y="23" width="2" height="1"/>
+                      <rect x="8" y="25" width="2" height="1"/><rect x="11" y="25" width="1" height="2"/>
+                      <rect x="13" y="25" width="1" height="1"/><rect x="15" y="25" width="2" height="1"/>
+                      <rect x="18" y="25" width="1" height="2"/><rect x="20" y="25" width="2" height="2"/>
+                      <rect x="23" y="25" width="1" height="2"/><rect x="26" y="25" width="1" height="1"/>
+                      <rect x="9" y="26" width="1" height="2"/><rect x="12" y="26" width="1" height="1"/>
+                      <rect x="14" y="26" width="2" height="2"/><rect x="17" y="26" width="1" height="1"/>
+                      <rect x="19" y="26" width="1" height="1"/><rect x="22" y="26" width="1" height="2"/>
+                      <rect x="25" y="26" width="1" height="2"/><rect x="27" y="26" width="1" height="2"/>
+                      <rect x="8" y="27" width="1" height="1"/><rect x="11" y="27" width="1" height="1"/>
+                      <rect x="13" y="27" width="2" height="1"/><rect x="16" y="27" width="2" height="1"/>
+                      <rect x="19" y="27" width="2" height="1"/><rect x="24" y="27" width="1" height="1"/>
+                    </g>
+                  </svg>
+                  <div class="qr-scan"></div>
+                  <div class="qr-tag">SMT-12 · ЛИНИЯ 3</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Screen 2 — Описание (voice hero) -->
+            <div class="scr active" data-screen="3">
+              <div class="app-head">
+                <span class="back">‹</span>
+                <div class="station">
+                  <div class="stn-name">Masterdoc · SMT-12</div>
+                  <div class="stn-line"><span class="live"></span>Голос · активен</div>
+                </div>
+                <div class="menu"><i></i><i></i><i></i></div>
+              </div>
+              <div class="convo">
+                <div class="ts">— 02:14 —</div>
+                <div class="bubble mary"><span class="who">Masterdoc</span>Привет. Что со станцией 12?</div>
+                <div class="bubble user"><span class="micdot"></span><span>странные щелчки, подача дважды заклинивала за час</span></div>
+              </div>
+              <div class="listen-panel">
+                <div class="lp-rings">
+                  <div class="lp-ring"></div>
+                  <div class="lp-ring r2"></div>
+                  <div class="lp-ring r3"></div>
+                  <div class="lp-mic-btn" aria-hidden="true">
+                    <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+                  </div>
+                </div>
+                <div class="lp-label">Слушаю · шумоподавление</div>
+                <div class="lp-transcribe">Распознаю…</div>
+              </div>
+            </div>
+
+            <!-- Screen 3 — Подсказки -->
+            <div class="scr" data-screen="4">
+              <div class="app-head">
+                <span class="back">‹</span>
+                <div class="station">
+                  <div class="stn-name">Станция 12 — пресс, линия 3</div>
+                  <div class="stn-line"><span class="live"></span>Подключено · Schuler 800T</div>
+                </div>
+                <div class="menu"><i></i><i></i><i></i></div>
+              </div>
+              <div class="convo">
+                <div class="ts">— сегодня, 02:14 —</div>
+                <div class="bubble user">
+                  <span class="micdot"></span>
+                  <span>на экране ошибка 14</span>
+                </div>
+                <div class="voice-attr">
+                  <svg viewBox="0 0 12 8" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="1" width="2" height="6" rx="1"/><rect x="3" y="0" width="2" height="8" rx="1"/><rect x="6" y="2" width="2" height="4" rx="1"/><rect x="9" y="1" width="2" height="6" rx="1"/></svg>
+                  Голос
+                </div>
+                <div class="bubble mary">
+                  <span class="who">Masterdoc</span>
+                  Ошибка 14 обычно — таймаут датчика узла подачи. Сузим круг — попробуйте:
+                </div>
+                <div class="opts">
+                  <div class="opt">
+                    <span class="lt">A</span>
+                    <span>Сброс — удерживайте <b style="color:var(--tx);font-weight:600">START</b> 3&nbsp;сек, затем <b style="color:var(--tx);font-weight:600">CLEAR</b>.</span>
+                  </div>
+                  <div class="opt">
+                    <span class="lt">B</span>
+                    <span>Проверьте датчик приближения на левой направляющей — щелчок на цикле.</span>
+                  </div>
+                </div>
+                <div class="chip">◉ 82% уверенность · 11 похожих</div>
+              </div>
+              <div class="input input-vf">
+                <div class="kbd-alt" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M20 5H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 5H5v-2h2v2zm10 0H9v-2h8v2zm0-3h-2v-2h2v2zm0-3h-2V8h2v2zm2 6h-1v-2h1v2z"/></svg>
+                </div>
+                <span class="vf-hint">Опишите, что происходит</span>
+                <div class="mic-hero" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/></svg>
+                </div>
+              </div>
+            </div>
+
+
+            <!-- Screen 6 — Решено / fault record -->
+            <div class="scr" data-screen="6">
+              <div class="app-head">
+                <span class="ph-mark" style="background:var(--gn)">M</span>
+                <div class="station">
+                  <div class="stn-name">Запись о сбое</div>
+                  <div class="stn-line" style="color:var(--gn);font-weight:600">◆ Сохранено в базу</div>
+                </div>
+                <div class="menu"><i></i><i></i><i></i></div>
+              </div>
+              <div class="fault">
+                <div class="fault-headline">Устранили <b>заклинивание подачи</b> из‑за изношенного направляющего.</div>
+                <div class="fault-meta">
+                  <span><b>Станция</b> SMT-12</span>
+                  <span><b>Линия</b> 3</span>
+                  <span><b>Решено</b> 4 мин</span>
+                </div>
+                <div class="fault-row">
+                  <div class="lbl">Сообщили</div>
+                  <div class="val">Щелчки, два заклина за час</div>
+                </div>
+                <div class="fault-row">
+                  <div class="lbl">Сделали</div>
+                  <div class="val">Прочистили желоб, установили ролик</div>
+                </div>
+                <div class="fault-row">
+                  <div class="lbl">Причина</div>
+                  <div class="val"><em>«Направляющая изношена — отметить на ТО».</em></div>
+                </div>
+                <div class="fault-row">
+                  <div class="lbl">Далее</div>
+                  <div class="val">Заменить направляющую при смене смены</div>
+                </div>
+                <div class="fault-footer">
+                  <div class="fault-stamp">Сохранено · без эскалации</div>
+                  <div class="fault-actions">
+                    <span class="fault-btn">Поделиться</span>
+                    <span class="fault-btn primary">Готово</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="home-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wireframe navigation -->
+      <div class="phone-nav">
+        <button class="nav-btn" data-target="2"><span class="nav-num">01</span><span class="nav-name">Скан</span></button>
+        <button class="nav-btn active" data-target="3"><span class="nav-num">02</span><span class="nav-name">Описание</span></button>
+        <button class="nav-btn" data-target="4"><span class="nav-num">03</span><span class="nav-name">Подсказки</span></button>
+        <button class="nav-btn" data-target="6"><span class="nav-num">04</span><span class="nav-name">Решено</span></button>
+      </div>
+      <div class="phone-hint"><b>Нажмите шаг</b>, чтобы листать прототип</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== BEFORE / AFTER ========== -->
+<section class="ba" id="before-after">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-tag">До и после · одна машина, две смены</div>
+        <h2 class="sec-h">Две смены. Одна машина. <em class="doc">С Masterdoc.</em></h2>
+      </div>
+      <p class="sec-sub">Яркий спасённый ремонт важен. Рутинная экономия времени важнее — там и лежит объём.</p>
+    </div>
+
+    <!-- Unmissable column headers -->
+    <div class="ba-headers">
+      <div class="ba-header bad">
+        <span class="ba-x">×</span>
+        <div>
+          <div class="ba-header-pre">До</div>
+          <div class="ba-header-main">Без <em>Masterdoc</em></div>
+        </div>
+      </div>
+      <div class="ba-vs"><span>vs</span></div>
+      <div class="ba-header good">
+        <span class="ba-x">✓</span>
+        <div>
+          <div class="ba-header-pre">После</div>
+          <div class="ba-header-main">С <em>Masterdoc</em></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 1: 2am emergency -->
+    <div class="ba-grid">
+      <div class="ba-cell bad">
+        <div class="ba-head">
+          <span class="ttl">Без Masterdoc</span>
+          <span class="stamp">02:14 · вт</span>
+        </div>
+        <div class="ba-when">Звонок в <span class="time">2&nbsp;ночи</span>.</div>
+        <div class="ba-body">
+          Оператор слышит необычный шум на станции&nbsp;12. Перезапуск не помогает. Сменный мастер смотрит — тоже не уверен. <b>Звонят механику домой</b>. Тот приезжает, переспрашивает. Диагностирует с нуля, находит заклинивание в узле подачи. Устраняет за 3 минуты.
+        </div>
+        <div class="timebar">
+          <div class="tb-lbl"><span>Простой · нарастающий</span><span>00:00 → 00:60</span></div>
+          <div class="tb-track"><div class="tb-fill" data-w="92"></div></div>
+          <div class="tb-end"><span class="big">40&ndash;60</span><span class="unit">мин · без записи</span></div>
+        </div>
+      </div>
+
+      <div class="ba-cell good">
+        <div class="ba-head">
+          <span class="ttl">С Masterdoc</span>
+          <span class="stamp">02:14 · вт</span>
+        </div>
+        <div class="ba-when">Без звонка. <span class="time">7&nbsp;минут.</span></div>
+        <div class="ba-body">
+          Оператор открывает Masterdoc, выбирает станцию&nbsp;12, записывает: <em>«странный шум, станок встал»</em>. Masterdoc узнаёт паттерн — два варианта: <b>(А)</b> проверить заклинивание подачи, <b>(Б)</b> натяжение приводного ремня. Оператор жмёт&nbsp;А, устраняет заклинивание, линия запускается.
+        </div>
+        <div class="timebar">
+          <div class="tb-lbl"><span>Простой · нарастающий</span><span>00:00 → 00:07</span></div>
+          <div class="tb-track"><div class="tb-fill" data-w="14"></div></div>
+          <div class="tb-end"><span class="big">7</span><span class="unit">мин · сбой записан</span></div>
+        </div>
+      </div>
+
+      <!-- Row 2: routine Tuesday -->
+      <div class="ba-cell bad">
+        <div class="ba-head">
+          <span class="ttl">Без Masterdoc</span>
+          <span class="stamp">10:47 · вт · рутина</span>
+        </div>
+        <div class="ba-when">Код ошибки, который <span class="time">никто не помнит.</span></div>
+        <div class="ba-body">
+          На панели оператора код ошибки. Никто не уверен. Зовут механиков. <b>25 минут простоя.</b> Механик делает сброс, о котором линия не знала. В четверг — та же история.
+        </div>
+        <div class="timebar">
+          <div class="tb-lbl"><span>Простой · нарастающий</span><span>00:00 → 00:30</span></div>
+          <div class="tb-track"><div class="tb-fill" data-w="64"></div></div>
+          <div class="tb-end"><span class="big">30</span><span class="unit">мин · при 2‑минутном ремонте</span></div>
+        </div>
+      </div>
+
+      <div class="ba-cell good">
+        <div class="ba-head">
+          <span class="ttl">С Masterdoc</span>
+          <span class="stamp">10:47 · вт · рутина</span>
+        </div>
+        <div class="ba-when">Знания, которые <span class="time">накапливаются.</span></div>
+        <div class="ba-body">
+          «Ошибка&nbsp;14». Masterdoc: <em>«Таймаут датчика. (А) Сброс — START 3&nbsp;сек, затем CLEAR, (Б) датчик слева на рельсе»</em>. Оператор жмёт&nbsp;А. Станок работает. В четверг другой оператор снова видит 14 — <b>Masterdoc уже знает.</b>
+        </div>
+        <div class="timebar">
+          <div class="tb-lbl"><span>Простой · нарастающий</span><span>00:00 → 00:03</span></div>
+          <div class="tb-track"><div class="tb-fill" data-w="6"></div></div>
+          <div class="tb-end"><span class="big">3</span><span class="unit">мин · в базу знаний</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ba-punch">
+      Такие рутинные сбои — <b>3–4 раза в неделю</b> на типичном заводе. Каждый съедает 20–45 минут, пока идёт эскалация. Это <b>8–12 часов потерянного выпуска в месяц</b> — на задачи, которые должны занимать пять минут.
+    </div>
+    <div class="esc-punch" style="margin-top:24px">
+      Отдельный шаг документирования не нужен. <b>Сам диалог — это запись.</b>
+    </div>
+  </div>
+</section>
+
+<!-- ========== MACHINES STRIP ========== -->
+<section class="machines">
+  <div class="machines-label">Masterdoc на всём вашем цехе</div>
+  <div class="marquee-wrapper">
+
+    <!-- Row 1: machine types → scroll left -->
+    <div class="marquee-outer row-1">
+      <div class="marquee-inner"><span class="mi">Холодильные витрины</span><span class="mi">Компрессорные агрегаты</span><span class="mi">HVAC</span><span class="mi">Торговое оборудование</span><span class="mi">Линии розлива</span><span class="mi">Упаковочные линии</span><span class="mi">Прессы</span><span class="mi">ЧПУ</span><span class="mi">Сварка</span><span class="mi">Конвейеры</span><span class="mi">Холодильные витрины</span><span class="mi">Компрессорные агрегаты</span><span class="mi">HVAC</span><span class="mi">Торговое оборудование</span><span class="mi">Линии розлива</span><span class="mi">Упаковочные линии</span><span class="mi">Прессы</span><span class="mi">ЧПУ</span><span class="mi">Сварка</span><span class="mi">Конвейеры</span></div>
+    </div>
+
+    <!-- Row 2: equipment brands → scroll right -->
+    <div class="marquee-outer row-2">
+      <div class="marquee-inner right"><span class="mi">Atlant</span><span class="mi">Bitzer</span><span class="mi">Danfoss</span><span class="mi">Copeland</span><span class="mi">Embraco</span><span class="mi">GEA</span><span class="mi">Carrier</span><span class="mi">Daikin</span><span class="mi">Mitsubishi</span><span class="mi">Siemens</span><span class="mi">Atlant</span><span class="mi">Bitzer</span><span class="mi">Danfoss</span><span class="mi">Copeland</span><span class="mi">Embraco</span><span class="mi">GEA</span><span class="mi">Carrier</span><span class="mi">Daikin</span><span class="mi">Mitsubishi</span><span class="mi">Siemens</span></div>
+    </div>
+
+  </div>
+  <div class="machines-sub">Любой станок с панелью управления. Без датчиков. Без железа. Без IT‑проекта.</div>
+</section>
+
+<!-- ========== HOW IT WORKS ========== -->
+<section class="how" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-tag">Как это работает</div>
+        <h2 class="sec-h">Четыре шага. <em class="doc">Пять</em> секунд на скан.</h2>
+      </div>
+      <p class="sec-sub">QR на станке. Телефон в кармане оператора. Без новых дашбордов, программ обучения и IT‑проектов.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01 / Старт</div>
+        <div class="step-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 3l9 16H3L12 3z"/><path d="M12 10v4M12 16.5v.5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="step-ttl">Станок ведёт себя странно.</div>
+        <div class="step-desc">Авария, шум, брак, неожиданная остановка.</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">02 / Открыть</div>
+        <div class="step-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.2"/><path d="M10 18.5h4" stroke-linecap="round"/><path d="M12 6.5v3M11 8h2" stroke-linecap="round"/></svg>
+        </div>
+        <div class="step-ttl">Оператор открывает Masterdoc.</div>
+        <div class="step-desc">QR-код или список станков. Описание проблемы голосом или текстом.</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">03 / Подсказки</div>
+        <div class="step-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 5h11l4 4v10H4z"/><path d="M8 11h8M8 15h5" stroke-linecap="round"/></svg>
+        </div>
+        <div class="step-ttl">Masterdoc ведёт.</div>
+        <div class="step-desc">Варианты А/Б/В. Правильные действия в правильном порядке.</div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">04 / Итог</div>
+        <div class="step-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 12l5 5L20 6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="step-ttl">Решено или эскалация.</div>
+        <div class="step-desc">Починили → записали. Нет → механикам весь контекст.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== NUMBERS ========== -->
+<section class="nums" id="numbers">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-tag">Цифры</div>
+        <h2 class="sec-h">Почему это проблема на <em class="doc">₽50&nbsp;млн в год</em>.</h2>
+      </div>
+      <p class="sec-sub">Математика проблемы.</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="cat">Масштаб</div>
+        <div class="num" data-count="25" data-suffix="">25</div>
+        <div class="lbl">событий простоя на объект в месяц</div>
+        <div class="src">Источник · данные пилотов Masterdoc</div>
+      </div>
+      <div class="stat">
+        <div class="cat">Повторяемость</div>
+        <div class="num" data-count="70" data-suffix="%">70%</div>
+        <div class="lbl">инцидентов — типовые повторяющиеся сценарии</div>
+        <div class="src">Источник · внутренние оценки эксплуатации</div>
+      </div>
+      <div class="stat">
+        <div class="cat">Стоимость</div>
+        <div class="num" data-count="50" data-prefix="₽" data-suffix=" млн">₽50 млн</div>
+        <div class="lbl">годовые потери на простоях для среднего предприятия</div>
+        <div class="src">Источник · расчёт по кейсам клиентов</div>
+      </div>
+      <div class="stat hero-stat">
+        <div class="cat">Окупаемость</div>
+        <div class="num">7&ndash;18×</div>
+        <div class="lbl">возврат на каждый вложенный рубль</div>
+        <div class="src">Источник · пилотные данные Masterdoc</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== CREDIBILITY ========== -->
+<section class="cred" id="team">
+  <div class="wrap">
+    <div class="sec-tag">Кто мы</div>
+    <h2 class="cred-head">Команда с опытом <em>цифровизации эксплуатации</em> и промышленных внедрений.</h2>
+
+    <div class="founders">
+      <div class="founder">
+        <div class="role">Сооснователь</div>
+        <div class="name">Бутов Антон</div>
+        <div class="bio">
+          Masterdoc — электронные журналы эксплуатации, заявки на ремонт и документация у агрегата. Фокус: сети объектов с холодильным и торговым оборудованием, уход от Excel без тяжёлого 1С.
+        </div>
+        <div class="links">
+          <a href="#book">Записаться на демо</a>
+          <a href="mailto:mail@antonbutov.com">mail@antonbutov.com</a>
+        </div>
+      </div>
+      <div class="founder">
+        <div class="role">Сооснователь</div>
+        <div class="name">Шаров Павел</div>
+        <div class="bio">
+          Сооснователь Masterdoc. Продукт, внедрение и развитие решения для команд эксплуатации на производстве и в сетях объектов.
+        </div>
+        <div class="links">
+          <a href="https://www.linkedin.com/in/pavelsharov/" target="_blank" rel="noopener">LinkedIn ↗</a>
+          <a href="mailto:pavel.sharov@mail.ru">pavel.sharov@mail.ru</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="pilot-line">
+      <div class="lt"><span class="dot"></span>Пилот с производителями промышленного оборудования и сетей эксплуатации.</div>
+      <div class="rt">Статус · активные пилоты · 2026</div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FAQ ========== -->
+<section class="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <div class="sec-tag">Вопросы</div>
+        <h2 class="sec-h">Что спрашивают <em class="doc">до</em> первого звонка.</h2>
+      </div>
+    </div>
+    <div class="faq-list">
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Что если Masterdoc не решит проблему?
+          <span class="faq-toggle" aria-hidden="true"></span>
+        </button>
+        <div class="faq-a" role="region">
+          <div class="faq-a-inner">Эскалация — с контекстом, не хаосом. Механики получают: описание оператора, все попытки, фото, суженный диагноз. Не с нуля. Исправление попадает в базу — в следующий раз оператор справится сам.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Нужны ли датчики или оборудование?
+          <span class="faq-toggle" aria-hidden="true"></span>
+        </button>
+        <div class="faq-a" role="region">
+          <div class="faq-a-inner">Нет. Работает со станками как есть и с телефонами операторов. QR на станке, веб в браузере. Без датчиков, шлюзов и IT‑проекта. Без установки из магазина приложений.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Откуда Masterdoc знает наши станки?
+          <span class="faq-toggle" aria-hidden="true"></span>
+        </button>
+        <div class="faq-a" role="region">
+          <div class="faq-a-inner">Старт: 10–15 типовых сбоев на станок — из паспортов, журналов и интервью с лучшими механиками. С первого дня пилота каждое событие пополняет базу. Через три месяца — паттерны, которых нет в инструкциях.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Чем Masterdoc отличается от обычного ИИ?
+          <span class="faq-toggle" aria-hidden="true"></span>
+        </button>
+        <div class="faq-a" role="region">
+          <div class="faq-a-inner">ChatGPT не знает, что узел подачи станции&nbsp;12 заклинивал трижды за месяц. Не передаст механикам контекст с эскалацией. Не учится на ваших событиях. Masterdoc опирается на ваши станки, историю и цех. Универсальный ИИ даёт универсальные ответы.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Как выглядит пилот?
+          <span class="faq-toggle" aria-hidden="true"></span>
+        </button>
+        <div class="faq-a" role="region">
+          <div class="faq-a-inner">Один станок, три недели. Библиотека сбоев из ваших машин и знаний команды. Реальные события в Masterdoc уже на первой неделе. В конце — цифры по времени, решениям и накопленным знаниям.</div>
+        </div>
+      </div>
+
+
+    </div>
+  </div>
+</section>
+
+<!-- ========== BOOK ========== -->
+<section class="book" id="book">
+  <div class="wrap book-grid">
+    <div class="book-left">
+      <div class="sec-tag">Запись на демо</div>
+      <h2>Посмотрите <em>Masterdoc</em> в деле.</h2>
+      <p class="lede">
+        <b>30 минут.</b> Покажем Masterdoc на реальном оборудовании, обсудим внедрение на вашем объекте. Без презентации.
+      </p>
+      <div class="book-bullets">
+        <div><div><b>Принесите</b><span>Один реальный простой с вашего объекта — покажем, как Masterdoc его разберёт.</span></div></div>
+        <div><div><b>Уйдёте с</b><span>Пониманием, где Masterdoc встраивается, расчётом окупаемости и условиями пилота.</span></div></div>
+      </div>
+      <div class="book-fb">
+        Предпочитаете почту? <a href="mailto:mail@antonbutov.com">mail@antonbutov.com</a>
+      </div>
+    </div>
+
+        <div class="cal-frame" id="calFrame">
+      <div class="cal-frame-head">Заявка на демо · ответим в течение рабочего дня</div>
+      <div class="cal-body" style="padding:24px;background:var(--s1);border:1px solid var(--bd)">
+        <form class="contact-form" action="https://formspree.io/f/maqvkbob" method="POST" style="display:flex;flex-direction:column;gap:14px">
+          <input type="hidden" name="_subject" value="Masterdoc lite: заявка с лендинга">
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">
+            Имя *
+            <input type="text" name="name" required style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">
+            Эл. почта *
+            <input type="email" name="email" required style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">
+            Телефон
+            <input type="tel" name="phone" style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">
+            Сообщение
+            <textarea name="message" rows="4" style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit;resize:vertical"></textarea>
+          </label>
+          <button type="submit" class="btn" style="justify-content:center;margin-top:8px"><span>Отправить</span><span class="arr">→</span></button>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<footer>
+  <div class="wrap">
+    <div class="ft-grid">
+      <div class="ft-left">
+        <div class="wordmark"><span class="machine">master</span><span class="doc">doc</span><span class="dot"></span></div>
+        <div class="tag">ИИ-копилот для поиска неисправностей в цеху.</div>
+      </div>
+      <div class="ft-mid">
+        <a href="https://masterdoc.pro" target="_blank" rel="noopener">masterdoc.pro ↗</a>
+      </div>
+      <div class="ft-right">
+        <a href="mailto:mail@antonbutov.com">mail@antonbutov.com</a>
+        <a href="https://www.linkedin.com/in/pavelsharov/" target="_blank" rel="noopener">LinkedIn ↗</a>
+      </div>
+    </div>
+    <div class="ft-rule">
+      <span>© 2026 Masterdoc</span>
+    </div>
+  </div>
+</footer>
+
+<!-- Sticky mobile CTA -->
+<div class="mob-cta" id="mobCta" aria-hidden="true">
+  <a href="#book"><span>Демо</span><span class="arr">→</span></a>
+</div>
+
+<script>
+  // ----- Smooth scroll -----
+  document.querySelectorAll('a[href^="#"]').forEach(a=>{
+    a.addEventListener('click', e=>{
+      const id = a.getAttribute('href');
+      if(id.length>1){
+        const el = document.querySelector(id);
+        if(el){ e.preventDefault(); el.scrollIntoView({behavior:'smooth', block:'start'}); }
+      }
+    });
+  });
+
+  // ----- Reveal on scroll (subtle) -----
+  const reveals = document.querySelectorAll('.ba-cell, .step, .stat, .founder, .ba-punch, .pilot-line, .cred-head');
+  reveals.forEach(el=>el.classList.add('reveal'));
+  const io = new IntersectionObserver((ents)=>{
+    ents.forEach(en=>{
+      if(en.isIntersecting){
+        en.target.classList.add('in');
+        io.unobserve(en.target);
+      }
+    });
+  },{threshold:.12, rootMargin:'0px 0px -40px 0px'});
+  reveals.forEach(el=>io.observe(el));
+
+  // ----- Time bar fill on view -----
+  const tbio = new IntersectionObserver((ents)=>{
+    ents.forEach(en=>{
+      if(en.isIntersecting){
+        const w = en.target.getAttribute('data-w');
+        requestAnimationFrame(()=>{ en.target.style.width = w + '%'; });
+        tbio.unobserve(en.target);
+      }
+    });
+  },{threshold:.5});
+  document.querySelectorAll('.tb-fill').forEach(el=>tbio.observe(el));
+
+  // ----- Counter animation for stats -----
+  const fmt = (val, prefix='', suffix='')=>{
+    const isFloat = !Number.isInteger(val);
+    const s = isFloat ? val.toFixed(1) : Math.round(val).toString();
+    return prefix + s + suffix;
+  };
+  const cio = new IntersectionObserver((ents)=>{
+    ents.forEach(en=>{
+      if(en.isIntersecting){
+        const el = en.target;
+        const target = parseFloat(el.getAttribute('data-count'));
+        const prefix = el.getAttribute('data-prefix') || '';
+        const suffix = el.getAttribute('data-suffix') || '';
+        const dur = 1100;
+        const t0 = performance.now();
+        const tick = (t)=>{
+          const p = Math.min((t - t0)/dur, 1);
+          const eased = 1 - Math.pow(1-p, 3);
+          el.textContent = fmt(target * eased, prefix, suffix);
+          if(p < 1) requestAnimationFrame(tick);
+          else el.textContent = fmt(target, prefix, suffix);
+        };
+        requestAnimationFrame(tick);
+        cio.unobserve(el);
+      }
+    });
+  },{threshold:.4});
+  document.querySelectorAll('.stat .num[data-count]').forEach(el=>cio.observe(el));
+
+  // ----- Phone wireframe nav: tap to switch + autoplay every 2s -----
+  (function(){
+    const buttons = document.querySelectorAll('.nav-btn');
+    const screens = document.querySelectorAll('.scr');
+    const stage   = document.getElementById('phoneStage');
+    if(!buttons.length || !screens.length) return;
+
+    const total = buttons.length;
+    let idx = Array.from(buttons).findIndex(b => b.classList.contains('active'));
+    if(idx < 0) idx = 0;
+    let autoTimer = null;
+    let userPaused = false;
+    let inView = false;
+
+    function show(target){
+      buttons.forEach(b => b.classList.toggle('active', b.dataset.target === String(target)));
+      screens.forEach(s => s.classList.toggle('active', s.dataset.screen === String(target)));
+    }
+    function tick(){
+      idx = (idx + 1) % total;
+      const target = buttons[idx].dataset.target;
+      show(target);
+    }
+    function startAuto(){
+      if(autoTimer || userPaused || !inView) return;
+      autoTimer = setInterval(tick, 3200);
+    }
+    function stopAuto(){
+      if(autoTimer){ clearInterval(autoTimer); autoTimer = null; }
+    }
+    function pauseFromUser(){
+      userPaused = true;
+      stopAuto();
+    }
+
+    // Tap nav: jump to that screen and pause autoplay
+    buttons.forEach((btn, i) => {
+      btn.addEventListener('click', () => {
+        idx = i;
+        show(btn.dataset.target);
+        pauseFromUser();
+      });
+    });
+    // Hover the phone: pause; mouse out: resume (unless user clicked)
+    if(stage){
+      stage.addEventListener('mouseenter', stopAuto);
+      stage.addEventListener('mouseleave', startAuto);
+    }
+
+    // Only run when phone scrolls into view (saves cycles + cache)
+    const phoneIO = new IntersectionObserver((ents)=>{
+      ents.forEach(en=>{
+        inView = en.isIntersecting;
+        if(inView) startAuto(); else stopAuto();
+      });
+    },{threshold:.25});
+    if(stage) phoneIO.observe(stage);
+
+    // Respect users who prefer reduced motion
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+      userPaused = true;
+    }
+  })();
+
+  // ----- Sticky mobile CTA: show after hero, hide when book section visible -----
+  (function(){
+    const bar = document.getElementById('mobCta');
+    const hero = document.querySelector('.hero');
+    const book = document.getElementById('book');
+    if(!bar || !hero || !book) return;
+    const heroObs = new IntersectionObserver(ents=>{
+      ents.forEach(en=>{ if(!en.isIntersecting) bar.classList.add('visible'); else bar.classList.remove('visible'); });
+    },{threshold:0.05});
+    const bookObs = new IntersectionObserver(ents=>{
+      ents.forEach(en=>{ if(en.isIntersecting) bar.classList.remove('visible'); });
+    },{threshold:0.1});
+    heroObs.observe(hero);
+    bookObs.observe(book);
+  })();
+
+  // ----- FAQ accordion -----
+  document.querySelectorAll('.faq-q').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.faq-item');
+      const isOpen = item.classList.contains('open');
+      // Close all open items
+      document.querySelectorAll('.faq-item.open').forEach(el => {
+        el.classList.remove('open');
+        el.querySelector('.faq-a').style.maxHeight = '';
+        el.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
+      });
+      // Open clicked item if it was closed
+      if (!isOpen) {
+        item.classList.add('open');
+        const ans = item.querySelector('.faq-a');
+        ans.style.maxHeight = ans.scrollHeight + 'px';
+        btn.setAttribute('aria-expanded', 'true');
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
