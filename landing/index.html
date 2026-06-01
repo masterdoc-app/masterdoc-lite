@@ -1458,8 +1458,14 @@
         <div class="cal-frame" id="calFrame">
       <div class="cal-frame-head">Заявка на демо · ответим в течение рабочего дня</div>
       <div class="cal-body" style="padding:24px;background:var(--s1);border:1px solid var(--bd)">
-        <form class="contact-form" action="https://formspree.io/f/maqkvnal" method="POST" style="display:flex;flex-direction:column;gap:14px">
+        <form class="contact-form" id="demoForm" action="https://formspree.io/f/maqkvnal" method="POST" style="display:flex;flex-direction:column;gap:14px">
           <input type="hidden" name="_subject" value="Masterdoc lite: заявка с лендинга">
+          <input type="hidden" name="utm_source" id="utm_source" value="">
+          <input type="hidden" name="utm_medium" id="utm_medium" value="">
+          <input type="hidden" name="utm_campaign" id="utm_campaign" value="">
+          <input type="hidden" name="utm_content" id="utm_content" value="">
+          <input type="hidden" name="utm_term" id="utm_term" value="">
+          <p id="demoFormStatus" class="mono-sm" style="display:none;margin:0 0 8px" role="status" aria-live="polite"></p>
           <label style="display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500">
             Имя *
             <input type="text" name="name" required autocomplete="name" style="padding:12px;border:1px solid var(--bd2);background:var(--bg);font:inherit">
@@ -1654,6 +1660,59 @@
     },{threshold:0.1});
     heroObs.observe(hero);
     bookObs.observe(book);
+  })();
+
+  // ----- UTM from URL → hidden fields (Formspree + аналитика) -----
+  (function(){
+    const params = new URLSearchParams(location.search);
+    ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(key=>{
+      const el = document.getElementById(key);
+      const val = params.get(key);
+      if(el && val) el.value = val;
+    });
+  })();
+
+  // ----- Demo form: AJAX + Metrika goal demo_form_submit -----
+  (function(){
+    const form = document.getElementById('demoForm');
+    const status = document.getElementById('demoFormStatus');
+    if(!form || !status) return;
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const btn = form.querySelector('[type=submit]');
+      const btnLabel = btn ? btn.innerHTML : '';
+      if(btn){ btn.disabled = true; btn.innerHTML = '<span>Отправка…</span>'; }
+      status.style.display = 'none';
+
+      try{
+        const res = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        });
+        if(!res.ok) throw new Error('formspree');
+
+        if(typeof ym === 'function') ym(109476559, 'reachGoal', 'demo_form_submit');
+
+        form.reset();
+        ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'].forEach(key=>{
+          const el = document.getElementById(key);
+          const val = new URLSearchParams(location.search).get(key);
+          if(el && val) el.value = val;
+        });
+
+        status.textContent = 'Заявка отправлена. Ответим в течение рабочего дня.';
+        status.style.display = 'block';
+        status.style.color = 'var(--gn)';
+      }catch{
+        status.textContent = 'Не удалось отправить. Напишите на mail@antonbutov.com';
+        status.style.display = 'block';
+        status.style.color = 'var(--or)';
+      }finally{
+        if(btn){ btn.disabled = false; btn.innerHTML = btnLabel; }
+      }
+    });
   })();
 
   // ----- FAQ accordion -----
